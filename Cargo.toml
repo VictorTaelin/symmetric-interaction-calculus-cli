@@ -1,6 +1,6 @@
 [package]
 name = "symmetric-interaction-calculus-cli"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["maiavictor <srvictormaia@gmail.com>"]
 
 [dependencies]

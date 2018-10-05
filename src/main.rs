@@ -112,6 +112,41 @@ fn format_binary_output(t : &Term) -> Vec<u8> {
     v
 }
 
+pub fn bits_to_char(s : &[u8]) -> u8 {
+    let mut c = 0;
+    for i in 0..8 {
+        c = c * 2 + (if s[i] == b'0' { 0 } else { 1 });
+    }
+    c
+}
+
+pub fn char_to_bits(c : u8) -> Vec<u8> {
+    let mut v : Vec<u8> = Vec::new();
+    let mut c = c;
+    for _i in 0..8 {
+        v.extend_from_slice(if c % 2 == 0 { b"0" } else { b"1" });
+        c = c / 2;
+    }
+    v.reverse();
+    v
+}
+
+pub fn bits_to_ascii(s : &[u8]) -> Vec<u8> {
+    let mut v : Vec<u8> = Vec::new();
+    for i in 0..s.len()/8 {
+        v.push(bits_to_char(&s[i*8..i*8+8]));
+    }
+    v
+}
+
+pub fn ascii_to_bits(a : &[u8]) -> Vec<u8> {
+    let mut v : Vec<u8> = Vec::new();
+    for i in 0..a.len() {
+        v.append(&mut char_to_bits(a[i]))
+    }
+    v
+}
+
 fn main() -> io::Result<()> {
     let matches = App::new("Symmetric Interaction Calculus")
         .version("0.1.0")
@@ -122,6 +157,12 @@ fn main() -> io::Result<()> {
             .long("input")
             .value_name("INPUT")
             .help("Input term")
+            .takes_value(true))
+        .arg(Arg::with_name("AINPUT")
+            .short("a")
+            .long("ainput")
+            .value_name("AINPUT")
+            .help("Input term, encoded as ascii")
             .takes_value(true))
         .arg(Arg::with_name("BINPUT")
             .short("b")
@@ -134,6 +175,12 @@ fn main() -> io::Result<()> {
             .long("boutput")
             .value_name("BOUTPUT")
             .help("Decodes output as a binary string")
+            .takes_value(false))
+        .arg(Arg::with_name("AOUTPUT")
+            .short("A")
+            .long("aoutput")
+            .value_name("AOUTPUT")
+            .help("Decodes output as ascii")
             .takes_value(false))
         .arg(Arg::with_name("STATS")
             .short("s")
@@ -152,11 +199,14 @@ fn main() -> io::Result<()> {
     let mut code = Vec::new();
     file.read_to_end(&mut code)?;
 
-    let input : Option<Vec<u8>> = match matches.value_of("BINPUT") {
-        Some(bits) => Some(to_string(&parse_binary_input(bits.as_bytes(), 0))),
-        None => match matches.value_of("INPUT") {
-            Some(bits) => Some(bits.as_bytes().to_vec()),
-            None => None
+    let input : Option<Vec<u8>> = match matches.value_of("AINPUT") {
+        Some(ascii) => Some(to_string(&parse_binary_input(&ascii_to_bits(ascii.as_bytes()), 0))),
+        None => match matches.value_of("BINPUT") {
+            Some(bits) => Some(to_string(&parse_binary_input(bits.as_bytes(), 0))),
+            None => match matches.value_of("INPUT") {
+                Some(term) => Some(term.as_bytes().to_vec()),
+                None => None
+            }
         }
     };
 
@@ -175,6 +225,8 @@ fn main() -> io::Result<()> {
 
     let output = if matches.is_present("BOUTPUT") {
         format_binary_output(&norm)
+    } else if matches.is_present("AOUTPUT") {
+        bits_to_ascii(&format_binary_output(&norm))
     } else {
         to_string(&norm)
     };
